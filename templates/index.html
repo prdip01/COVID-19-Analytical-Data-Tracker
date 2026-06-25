@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Production-grade COVID-19 analytical dashboard tracking global cases, rolling averages, country comparisons, and vaccination rates.">
+    <title>COVID-19 Global Data Tracker</title>
+    
+    <!-- Premium Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Plotly.js CDN for client-side interactive rendering -->
+    <script src="https://cdn.plot.ly/plotly-2.29.1.min.js" charset="utf-8"></script>
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar Controls -->
+        <aside class="sidebar">
+            <div class="brand-section">
+                <div class="brand-icon">C</div>
+                <div class="brand-name">COVID-19 Tracker</div>
+            </div>
+            
+            <hr style="border: 0; border-top: 1px solid var(--card-border);">
+            
+            <!-- Filters -->
+            <div class="filter-group">
+                <label for="country-select" class="filter-label">Select Countries</label>
+                <select id="country-select" name="countries" multiple>
+                    <!-- Will pre-select a few countries by default in the template rendering -->
+                    {% for country in countries_list %}
+                    <option value="{{ country }}" {% if country in default_countries %}selected{% endif %}>{{ country }}</option>
+                    {% endfor %}
+                </select>
+                <span style="font-size: 0.75rem; color: var(--text-muted);">Hold Ctrl/Cmd to select multiple</span>
+            </div>
+            
+            <div class="filter-group">
+                <label for="metric-select" class="filter-label">Metric Selection</label>
+                <select id="metric-select" name="metric">
+                    <option value="rolling_avg_7d" selected>Daily Cases (7d Rolling Avg)</option>
+                    <option value="cases">Total Cases</option>
+                    <option value="deaths">Total Deaths</option>
+                    <option value="recovered">Total Recovered</option>
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <label for="start-date" class="filter-label">Start Date</label>
+                <input type="date" id="start-date" name="start_date" min="2020-01-22" max="2023-03-10">
+            </div>
+            
+            <div class="filter-group">
+                <label for="end-date" class="filter-label">End Date</label>
+                <input type="date" id="end-date" name="end_date" min="2020-01-22" max="2023-03-10">
+            </div>
+            
+            <hr style="border: 0; border-top: 1px solid var(--card-border); margin-top: auto;">
+            
+            <!-- ETL Pipeline Refresh Button -->
+            <div class="filter-group">
+                <button id="refresh-pipeline-btn" class="btn-primary">
+                    <span id="refresh-spinner" class="spinner" style="display: none;"></span>
+                    Refresh Data Pipeline
+                </button>
+            </div>
+        </aside>
+        
+        <!-- Main Dashboard View -->
+        <main class="main-content">
+            <header class="dashboard-header">
+                <div class="dashboard-title">
+                    <h1>Global Analysis Dashboard</h1>
+                    <p>Interactive tracking of historical trends, comparative charts, and vaccination progression</p>
+                </div>
+                
+                <!-- Data Freshness Metadata -->
+                <div class="data-meta">
+                    <span><strong>Source:</strong> JHU CSSE (Archived), OWID</span>
+                    <span><strong>Last Updated:</strong> <span id="last-updated-date">{{ last_updated }}</span></span>
+                    <span><strong>Pipeline Run:</strong> Daily Scheduled</span>
+                </div>
+            </header>
+            
+            <!-- Summary Metric Cards -->
+            <section class="stats-grid">
+                <div class="stat-card cases">
+                    <span class="stat-label">Global Cases</span>
+                    <span class="stat-value">{{ "{:,.0f}".format(summary_stats.cases) }}</span>
+                    <span class="stat-sub">Cumulative total cases confirmed</span>
+                </div>
+                <div class="stat-card deaths">
+                    <span class="stat-label">Global Deaths</span>
+                    <span class="stat-value">{{ "{:,.0f}".format(summary_stats.deaths) }}</span>
+                    <span class="stat-sub">Cumulative recorded fatalities</span>
+                </div>
+                <div class="stat-card recovered">
+                    <span class="stat-label">Global Recovered</span>
+                    <span class="stat-value">{{ "{:,.0f}".format(summary_stats.recovered) }}</span>
+                    <span class="stat-sub">Cumulative recovery confirmations</span>
+                </div>
+                <div class="stat-card vaccinations">
+                    <span class="stat-label">Global Vaccinations</span>
+                    <span class="stat-value">{{ "{:,.0f}".format(summary_stats.vaccinations) }}</span>
+                    <span class="stat-sub">Total doses administered</span>
+                </div>
+            </section>
+            
+            <!-- Interactive Section -->
+            <section class="charts-grid">
+                <!-- Interactive Time Series Comparison -->
+                <div class="chart-card">
+                    <h2>Interactive Country Trends <span style="font-size: 0.85rem; color: var(--text-secondary); font-weight: normal;">(Dynamic Filters Apply)</span></h2>
+                    <div class="chart-container">
+                        <div id="plotly-cases-chart" style="width: 100%; height: 100%;"></div>
+                    </div>
+                </div>
+                
+                <!-- Interactive Vaccination Choropleth Map -->
+                <div class="chart-card">
+                    <h2>Vaccination Coverage Map</h2>
+                    <div class="chart-container">
+                        <div id="plotly-vaccinations-map" style="width: 100%; height: 100%;"></div>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Analytical Static Grid (Matplotlib/Seaborn renders) -->
+            <section class="charts-grid">
+                <div class="chart-card">
+                    <h2>Global Daily Cases & 7-Day Rolling Average</h2>
+                    <div class="chart-container">
+                        <img src="/api/static-charts/global-trend.png" alt="Global Daily Cases Trend" class="static-chart-img">
+                    </div>
+                </div>
+                <div class="chart-card">
+                    <h2>Top 10 Countries by Confirmed cases</h2>
+                    <div class="chart-container">
+                        <img src="/api/static-charts/top-countries.png" alt="Top 10 Countries Cases" class="static-chart-img">
+                    </div>
+                </div>
+            </section>
+            
+            <section class="charts-grid">
+                <div class="chart-card full-width">
+                    <h2>Regional Distribution Heatmap</h2>
+                    <div class="chart-container">
+                        <img src="/api/static-charts/heatmap.png" alt="Cases Distribution Heatmap" class="static-chart-img" style="max-height: 480px; width: 100%; object-fit: contain;">
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+    
+    <!-- Render the interactive vaccination map from backend JSON payload -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const mapJson = {{ vax_map_json | safe }};
+            if (mapJson && mapJson.data) {
+                Plotly.newPlot('plotly-vaccinations-map', mapJson.data, mapJson.layout);
+            }
+        });
+    </script>
+    
+    <!-- Custom JS controllers -->
+    <script src="/static/js/dashboard.js"></script>
+</body>
+</html>

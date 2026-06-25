@@ -1,0 +1,31 @@
+# Virtual Environment
+.venv/
+venv/
+ENV/
+
+# Python Cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+tests/.pytest_cache/
+
+# Local configuration / secrets
+.env
+.env.local
+.env.*.local
+
+# Data storage - never commit raw data or database files
+data/raw/*
+data/processed/*
+data/backups/*
+data/*.db
+data/*.log
+etl.log
+:memory:
+
+# IDEs
+.vscode/
+.idea/
+.DS_Store

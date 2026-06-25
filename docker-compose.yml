@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  # 1. Flask Web Application Service
+  web:
+    build: .
+    container_name: covid19-tracker-web
+    restart: always
+    ports:
+      - "5001:5001"
+    environment:
+      - PORT=5001
+      - FLASK_ENV=production
+      - LOG_LEVEL=INFO
+      
+      # SQLite Setup (Default)
+      - DATABASE_URL=sqlite:///data/covid19.db
+      - CACHE_TYPE=SimpleCache
+      
+      # PostgreSQL & Redis Configuration (Uncomment below and comment SQLite settings above to migrate)
+      # - DATABASE_URL=postgresql://postgres:postgres_secure_pass@db:5432/covid19
+      # - CACHE_TYPE=RedisCache
+      # - REDIS_URL=redis://cache:6379/0
+      
+    volumes:
+      # Persist SQLite databases, backups, and logs locally on the host
+      - ./data:/app/data
+    # depends_on:
+    #   - db
+    #   - cache
+
+  # 2. PostgreSQL Database Service (Uncomment to activate PostgreSQL)
+  # db:
+  #   image: postgres:15-alpine
+  #   container_name: covid19-tracker-db
+  #   restart: always
+  #   environment:
+  #     - POSTGRES_USER=postgres
+  #     - POSTGRES_PASSWORD=postgres_secure_pass
+  #     - POSTGRES_DB=covid19
+  #   ports:
+  #     - "5432:5432"
+  #   volumes:
+  #     - pgdata:/var/lib/postgresql/data
+
+  # 3. Redis Cache Service (Uncomment to activate Redis)
+  # cache:
+  #   image: redis:7-alpine
+  #   container_name: covid19-tracker-cache
+  #   restart: always
+  #   ports:
+  #     - "6379:6379"
+  #   volumes:
+  #     - redisdata:/data
+
+# Persistent Volumes for Database and Redis (Uncomment if db/cache are activated)
+# volumes:
+#   pgdata:
+#   redisdata:

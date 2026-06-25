@@ -1,0 +1,23 @@
+# Git and Documentation
+.git
+.github
+docs
+README.md
+
+# Virtual Environment
+.venv
+venv
+ENV
+
+# Python Cache
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache
+
+# Local data & environment configs
+.env
+data/
+etl.log
+tests

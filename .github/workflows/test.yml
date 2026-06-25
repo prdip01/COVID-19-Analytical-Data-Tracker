@@ -1,0 +1,44 @@
+name: Test Suite & Code Quality
+
+on:
+  push:
+    branches: [ master, main ]
+  pull_request:
+    branches: [ master, main ]
+
+jobs:
+  test-and-lint:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install flake8 pytest
+
+      - name: Lint with Flake8
+        run: |
+          # Stop the build if there are syntax errors or undefined names
+          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+          # Treat all other issues as warnings
+          flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+
+      - name: Run Test Suite
+        env:
+          DATABASE_URL: sqlite:///:memory:
+          FLASK_ENV: development
+          LIMITER_DEFAULT_LIMITS: "2000 per day;500 per hour" # Relax for testing
+          SECRET_KEY: ci_dummy_secret_key_placeholder
+          ADMIN_API_KEY: ci_dummy_admin_api_key_placeholder
+        run: |
+          pytest
